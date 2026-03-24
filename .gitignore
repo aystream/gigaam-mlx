@@ -1,0 +1,15 @@
+__pycache__/
+*.egg-info/
+dist/
+build/
+.venv/
+*.pyc
+
+# Model weights (download from HuggingFace)
+*.safetensors
+tokenizer.model
+
+# IDE
+.idea/
+.vscode/
+*.swp

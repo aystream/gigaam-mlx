@@ -1,0 +1,32 @@
+{
+  "model_type": "gigaam",
+  "model_variant": "v3_e2e_ctc",
+  "framework": "mlx",
+  "encoder": {
+    "feat_in": 64,
+    "n_layers": 16,
+    "d_model": 768,
+    "n_heads": 16,
+    "ff_expansion_factor": 4,
+    "conv_kernel_size": 5,
+    "subs_kernel_size": 5,
+    "subsampling": "conv1d",
+    "subsampling_factor": 4,
+    "self_attention_model": "rotary",
+    "rope_base": 5000
+  },
+  "head": {
+    "type": "ctc",
+    "num_classes": 257
+  },
+  "preprocessor": {
+    "sample_rate": 16000,
+    "n_mels": 64,
+    "hop_length": 160,
+    "win_length": 320,
+    "n_fft": 320,
+    "center": false
+  },
+  "tokenizer": "tokenizer.model",
+  "total_parameters": 220879361
+}

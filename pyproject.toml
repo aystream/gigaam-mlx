@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gigaam-mlx"
+version = "0.1.0"
+description = "Fast Russian speech recognition on Apple Silicon — MLX port of GigaAM-v3"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [{ name = "Alex Kel" }]
+keywords = ["speech-recognition", "asr", "russian", "mlx", "apple-silicon", "gigaam"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "mlx>=0.20",
+    "numpy",
+    "librosa>=0.10",
+    "sentencepiece",
+    "huggingface_hub",
+]
+
+[project.optional-dependencies]
+convert = ["torch>=2.5", "gigaam"]
+
+[project.scripts]
+gigaam-mlx = "gigaam_mlx.transcribe:main"
+
+[project.urls]
+Homepage = "https://github.com/aystream/gigaam-mlx"
+"Model Weights" = "https://huggingface.co/aystream/GigaAM-v3-e2e-ctc-mlx"
+"Original Model" = "https://github.com/salute-developers/GigaAM"
+
+[tool.setuptools.packages.find]
+include = ["gigaam_mlx"]
