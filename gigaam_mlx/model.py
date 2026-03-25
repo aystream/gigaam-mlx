@@ -1,7 +1,7 @@
-"""GigaAM v3 e2e CTC — Conformer encoder + CTC head on Apple MLX."""
+"""GigaAM v3 e2e — Conformer encoder + CTC/RNNT head on Apple MLX."""
 
 import math
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import mlx.core as mx
 import mlx.nn as nn
@@ -192,31 +192,93 @@ class CTCHead(nn.Module):
         return logits - mx.logsumexp(logits, axis=-1, keepdims=True)
 
 
+# ── RNNT Decoder & Joint ────────────────────────────────────────
+
+class RNNTDecoder(nn.Module):
+    def __init__(self, pred_hidden: int = 320, num_classes: int = 1025):
+        super().__init__()
+        self.pred_hidden = pred_hidden
+        self.blank_id = num_classes - 1
+        self.embed = nn.Embedding(num_classes, pred_hidden)
+        self.lstm = nn.LSTM(pred_hidden, pred_hidden)
+
+    def predict(
+        self, x: Optional[mx.array], state: Optional[Tuple[mx.array, mx.array]]
+    ) -> Tuple[mx.array, Tuple[mx.array, mx.array]]:
+        if x is not None:
+            emb = self.embed(x)
+        else:
+            emb = mx.zeros((1, 1, self.pred_hidden))
+        if state is not None:
+            h, c = state
+            all_hidden, all_cell = self.lstm(emb, h, c)
+        else:
+            all_hidden, all_cell = self.lstm(emb)
+        return all_hidden, (all_hidden[:, -1, :], all_cell[:, -1, :])
+
+
+class RNNTJoint(nn.Module):
+    def __init__(
+        self, enc_hidden: int = 768, pred_hidden: int = 320,
+        joint_hidden: int = 320, num_classes: int = 1025,
+    ):
+        super().__init__()
+        self.enc_proj = nn.Linear(enc_hidden, joint_hidden)
+        self.pred_proj = nn.Linear(pred_hidden, joint_hidden)
+        self.out = nn.Linear(joint_hidden, num_classes)
+
+    def __call__(self, enc: mx.array, pred: mx.array) -> mx.array:
+        e = mx.expand_dims(self.enc_proj(enc), axis=2)
+        p = mx.expand_dims(self.pred_proj(pred), axis=1)
+        joint = nn.relu(e + p)
+        logits = self.out(joint)
+        return logits - mx.logsumexp(logits, axis=-1, keepdims=True)
+
+
 # ── Full Model ──────────────────────────────────────────────────
 
-NUM_CLASSES = 257
+CTC_CLASSES = 257
+RNNT_CLASSES = 1025
 
 
 class GigaAMMLX(nn.Module):
     """
-    GigaAM v3 e2e CTC on Apple MLX.
+    GigaAM v3 e2e on Apple MLX.
 
-    220M parameter Conformer encoder with CTC head for Russian ASR.
-    Produces punctuated, normalized text directly.
+    220M parameter Conformer encoder for Russian ASR.
+    Supports CTC (fast) and RNNT (higher quality) decoding.
     """
 
-    def __init__(self, num_classes: int = NUM_CLASSES):
+    def __init__(self, model_type: str = "ctc"):
         super().__init__()
-        self.num_classes = num_classes
+        self.model_type = model_type
         self.encoder = ConformerEncoder()
-        self.head = CTCHead(num_classes=num_classes)
+
+        if model_type == "ctc":
+            self.num_classes = CTC_CLASSES
+            self.head = CTCHead(num_classes=CTC_CLASSES)
+        elif model_type == "rnnt":
+            self.num_classes = RNNT_CLASSES
+            self.decoder = RNNTDecoder(pred_hidden=320, num_classes=RNNT_CLASSES)
+            self.joint = RNNTJoint(
+                enc_hidden=768, pred_hidden=320,
+                joint_hidden=320, num_classes=RNNT_CLASSES,
+            )
+        else:
+            raise ValueError(f"Unknown model_type: {model_type}. Use 'ctc' or 'rnnt'.")
 
     def encode(self, features: mx.array) -> Tuple[mx.array, int]:
         """Run conformer encoder. Input: (B, T, 64) mel spectrogram."""
         return self.encoder(features)
 
-    def ctc_decode(self, encoded: mx.array, seq_len: int) -> List[int]:
-        """CTC greedy decoding — fully vectorized, no sequential loop."""
+    def decode(self, encoded: mx.array, seq_len: int) -> List[int]:
+        """Decode using the model's head (CTC or RNNT)."""
+        if self.model_type == "ctc":
+            return self._ctc_decode(encoded, seq_len)
+        return self._rnnt_decode(encoded, seq_len)
+
+    def _ctc_decode(self, encoded: mx.array, seq_len: int) -> List[int]:
+        """CTC greedy decoding — fully vectorized."""
         log_probs = self.head(encoded)
         labels = mx.argmax(log_probs[0, :seq_len, :], axis=-1)
         mx.eval(labels)
@@ -229,3 +291,35 @@ class GigaAMMLX(nn.Module):
                 token_ids.append(tok)
             prev = tok
         return token_ids
+
+    def _rnnt_decode(
+        self, encoded: mx.array, seq_len: int, max_symbols: int = 10
+    ) -> List[int]:
+        """RNNT greedy decoding (sequential)."""
+        enc = encoded[0]  # (C, T)
+        blank_id = self.decoder.blank_id
+        hyp: List[int] = []
+        state: Optional[Tuple[mx.array, mx.array]] = None
+        last_label: Optional[mx.array] = None
+
+        for t in range(seq_len):
+            f = enc[:, t:t + 1].T
+            f = mx.expand_dims(f, axis=0) if f.ndim == 2 else f
+            not_blank = True
+            symbols = 0
+            while not_blank and symbols < max_symbols:
+                g, new_state = self.decoder.predict(last_label, state)
+                logits = self.joint(f, g)
+                k = mx.argmax(logits[0, 0, 0, :]).item()
+                if k == blank_id:
+                    not_blank = False
+                else:
+                    hyp.append(int(k))
+                    state = new_state
+                    last_label = mx.array([[hyp[-1]]])
+                    symbols += 1
+        return hyp
+
+    # Keep backward compat
+    def ctc_decode(self, encoded: mx.array, seq_len: int) -> List[int]:
+        return self._ctc_decode(encoded, seq_len)

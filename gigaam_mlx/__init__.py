@@ -6,16 +6,19 @@ from .transcribe import transcribe_file
 
 __version__ = "0.1.0"
 
-DEFAULT_REPO = "aystream/GigaAM-v3-e2e-ctc-mlx"
+REPOS = {
+    "ctc": "aystream/GigaAM-v3-e2e-ctc-mlx",
+    "rnnt": "aystream/GigaAM-v3-e2e-rnnt-mlx",
+}
 
 
-def load_model(repo_id: str = DEFAULT_REPO, local_dir: str | None = None):
+def load_model(model_type: str = "ctc", repo_id: str | None = None):
     """
     Load GigaAM MLX model and tokenizer.
 
     Args:
-        repo_id: HuggingFace repo ID or local path
-        local_dir: Optional local directory to cache model files
+        model_type: "ctc" (fast) or "rnnt" (higher quality)
+        repo_id: HuggingFace repo ID or local path (auto-selected if None)
 
     Returns:
         tuple: (model, tokenizer)
@@ -24,22 +27,33 @@ def load_model(repo_id: str = DEFAULT_REPO, local_dir: str | None = None):
     import mlx.core as mx
     from sentencepiece import SentencePieceProcessor
 
-    # Check if repo_id is a local path
+    if model_type not in ("ctc", "rnnt"):
+        raise ValueError(f"model_type must be 'ctc' or 'rnnt', got '{model_type}'")
+
+    if repo_id is None:
+        repo_id = REPOS[model_type]
+
+    # Local path or HuggingFace download
     if os.path.isdir(repo_id):
         model_dir = repo_id
     else:
         from huggingface_hub import snapshot_download
-        model_dir = snapshot_download(repo_id, local_dir=local_dir)
+        model_dir = snapshot_download(repo_id)
 
-    weights_path = os.path.join(model_dir, "weights.safetensors")
-    tokenizer_path = os.path.join(model_dir, "tokenizer.model")
-
+    # Try suffixed name first (local dev with both models), then standard (HF)
+    weights_path = os.path.join(model_dir, f"weights_{model_type}.safetensors")
     if not os.path.exists(weights_path):
-        raise FileNotFoundError(f"Weights not found: {weights_path}")
-    if not os.path.exists(tokenizer_path):
-        raise FileNotFoundError(f"Tokenizer not found: {tokenizer_path}")
+        weights_path = os.path.join(model_dir, "weights.safetensors")
+    if not os.path.exists(weights_path):
+        raise FileNotFoundError(f"Weights not found in {model_dir}")
 
-    model = GigaAMMLX()
+    tokenizer_path = os.path.join(model_dir, f"tokenizer_{model_type}.model")
+    if not os.path.exists(tokenizer_path):
+        tokenizer_path = os.path.join(model_dir, "tokenizer.model")
+    if not os.path.exists(tokenizer_path):
+        raise FileNotFoundError(f"Tokenizer not found in {model_dir}")
+
+    model = GigaAMMLX(model_type=model_type)
     weights = mx.load(weights_path)
     model.load_weights(list(weights.items()))
     mx.eval(model.parameters())
@@ -71,5 +85,5 @@ def transcribe(model, tokenizer, audio_path: str) -> str:
 
     encoded, seq_len = model.encode(mel_mx)
     mx.eval(encoded)
-    token_ids = model.ctc_decode(encoded, seq_len)
+    token_ids = model.decode(encoded, seq_len)
     return tokenizer.decode(token_ids)

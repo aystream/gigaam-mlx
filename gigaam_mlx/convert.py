@@ -1,4 +1,4 @@
-"""Convert GigaAM PyTorch weights to MLX safetensors format.
+"""Convert GigaAM PyTorch weights (CTC or RNNT) to MLX safetensors format.
 
 Requires: pip install gigaam-mlx[convert]
 """
@@ -96,10 +96,36 @@ def convert_ctc_head(pt_state: dict) -> dict:
     }
 
 
+def convert_rnnt_head(pt_state: dict) -> dict:
+    """Convert RNNT head weights."""
+    weights = {}
+    weights["decoder.embed.weight"] = (
+        pt_state["head.decoder.embed.weight"].detach().cpu().numpy()
+    )
+    weight_ih = pt_state["head.decoder.lstm.weight_ih_l0"].detach().cpu().numpy()
+    weight_hh = pt_state["head.decoder.lstm.weight_hh_l0"].detach().cpu().numpy()
+    bias_ih = pt_state["head.decoder.lstm.bias_ih_l0"].detach().cpu().numpy()
+    bias_hh = pt_state["head.decoder.lstm.bias_hh_l0"].detach().cpu().numpy()
+    weights["decoder.lstm.Wx"] = weight_ih
+    weights["decoder.lstm.Wh"] = weight_hh
+    weights["decoder.lstm.bias"] = bias_ih + bias_hh
+
+    for pt_name, mlx_name in [
+        ("head.joint.enc", "joint.enc_proj"),
+        ("head.joint.pred", "joint.pred_proj"),
+    ]:
+        weights[f"{mlx_name}.weight"] = pt_state[f"{pt_name}.weight"].detach().cpu().numpy()
+        weights[f"{mlx_name}.bias"] = pt_state[f"{pt_name}.bias"].detach().cpu().numpy()
+    weights["joint.out.weight"] = pt_state["head.joint.joint_net.1.weight"].detach().cpu().numpy()
+    weights["joint.out.bias"] = pt_state["head.joint.joint_net.1.bias"].detach().cpu().numpy()
+    return weights
+
+
 def main():
     parser = argparse.ArgumentParser(description="Convert GigaAM PyTorch → MLX")
     parser.add_argument(
         "--model", default="v3_e2e_ctc",
+        choices=["v3_e2e_ctc", "v3_e2e_rnnt"],
         help="GigaAM model name (default: v3_e2e_ctc)",
     )
     parser.add_argument(
@@ -108,7 +134,6 @@ def main():
     )
     args = parser.parse_args()
 
-    # Lazy imports — only needed for conversion
     import ssl
     import certifi
     os.environ["SSL_CERT_FILE"] = certifi.where()
@@ -119,6 +144,8 @@ def main():
     import mlx.core as mx
     import gigaam
 
+    model_type = "ctc" if "ctc" in args.model else "rnnt"
+
     print(f"Loading PyTorch GigaAM {args.model}...")
     pt_model = gigaam.load_model(args.model)
     pt_state = {k: v for k, v in pt_model.named_parameters()}
@@ -128,8 +155,11 @@ def main():
     print("Converting encoder weights...")
     weights = convert_encoder(pt_state)
 
-    print("Converting CTC head weights...")
-    weights.update(convert_ctc_head(pt_state))
+    print(f"Converting {model_type} head weights...")
+    if model_type == "ctc":
+        weights.update(convert_ctc_head(pt_state))
+    else:
+        weights.update(convert_rnnt_head(pt_state))
 
     mlx_weights = {k: mx.array(v) for k, v in weights.items()}
 

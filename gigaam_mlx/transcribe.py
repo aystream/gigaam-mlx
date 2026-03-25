@@ -35,7 +35,8 @@ def transcribe_file(
     audio_path: str,
     model: Optional[GigaAMMLX] = None,
     tokenizer=None,
-    repo_id: str = "aystream/GigaAM-v3-e2e-ctc-mlx",
+    model_type: str = "ctc",
+    repo_id: Optional[str] = None,
     verbose: bool = True,
 ) -> list[dict]:
     """
@@ -45,7 +46,8 @@ def transcribe_file(
         audio_path: Path to audio/video file
         model: Pre-loaded model (loads from HF if None)
         tokenizer: Pre-loaded tokenizer
-        repo_id: HuggingFace repo to load model from
+        model_type: "ctc" (fast) or "rnnt" (higher quality)
+        repo_id: HuggingFace repo ID (auto-selected if None)
         verbose: Print progress
 
     Returns:
@@ -55,10 +57,9 @@ def transcribe_file(
         if verbose:
             print(msg, flush=True)
 
-    # Load model if not provided
     if model is None or tokenizer is None:
         from . import load_model
-        model, tokenizer = load_model(repo_id)
+        model, tokenizer = load_model(model_type=model_type, repo_id=repo_id)
 
     log(f"Loading audio: {os.path.basename(audio_path)}")
     audio = load_audio(audio_path)
@@ -76,7 +77,7 @@ def transcribe_file(
 
         encoded, seq_len = model.encode(mel_mx)
         mx.eval(encoded)
-        token_ids = model.ctc_decode(encoded, seq_len)
+        token_ids = model.decode(encoded, seq_len)
         text = tokenizer.decode(token_ids)
 
         if text.strip():
@@ -104,6 +105,10 @@ def main():
         description="Transcribe audio/video with GigaAM MLX"
     )
     parser.add_argument("input", help="Path to audio or video file")
+    parser.add_argument(
+        "--model-type", default="ctc", choices=["ctc", "rnnt"],
+        help="Model variant: ctc (fast) or rnnt (higher quality)",
+    )
     parser.add_argument("--output-dir", default=None, help="Output directory")
     parser.add_argument("--model", default=None, help="HF repo ID or local model path")
     parser.add_argument("--format", choices=["srt", "txt", "both"], default="both")
@@ -117,10 +122,12 @@ def main():
 
     output_dir = args.output_dir or os.path.dirname(input_path)
     base_name = os.path.splitext(os.path.basename(input_path))[0]
-    repo_id = args.model or "aystream/GigaAM-v3-e2e-ctc-mlx"
 
     segments = transcribe_file(
-        input_path, repo_id=repo_id, verbose=not args.quiet
+        input_path,
+        model_type=args.model_type,
+        repo_id=args.model,
+        verbose=not args.quiet,
     )
 
     if not segments:

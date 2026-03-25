@@ -7,7 +7,10 @@ build/
 
 # Model weights (download from HuggingFace)
 *.safetensors
-tokenizer.model
+*.model
+
+# macOS
+.DS_Store
 
 # IDE
 .idea/

@@ -8,7 +8,7 @@
 
 > Fast Russian speech recognition on Apple Silicon — **180x realtime**
 
-MLX port of [GigaAM-v3](https://github.com/salute-developers/GigaAM) (220M params, Conformer + CTC) by Salute Developers. Produces **punctuated, normalized text** directly. No PyTorch required.
+MLX port of [GigaAM-v3](https://github.com/salute-developers/GigaAM) (220M params, Conformer + CTC/RNNT) by Salute Developers. Produces **punctuated, normalized text** directly. No PyTorch required.
 
 <p align="center">
   <img src="assets/benchmark.svg" alt="Benchmark comparison" width="600">
@@ -17,7 +17,7 @@ MLX port of [GigaAM-v3](https://github.com/salute-developers/GigaAM) (220M param
 ## Quick Start
 
 ```bash
-pip install gigaam-mlx
+pip install git+https://github.com/aystream/gigaam-mlx.git
 ```
 
 ```python
@@ -31,8 +31,11 @@ print(text)
 ## CLI
 
 ```bash
-# Transcribe any audio/video file
+# Transcribe any audio/video file (CTC — fast, default)
 gigaam-mlx recording.mkv
+
+# Use RNNT for higher quality
+gigaam-mlx recording.mkv --model-type rnnt
 
 # Output subtitles
 gigaam-mlx call.wav --output-dir ./transcripts --format srt
@@ -46,12 +49,25 @@ MacBook Pro M2 Max, 20-second audio chunk (avg of 3 runs, warmed up):
 
 | Backend | Model | Time | Realtime factor |
 |---|---|---|---|
-| **MLX (this)** | **v3_e2e_ctc** | **0.11s** | **~180x** |
+| **MLX (this)** | **v3_e2e_ctc** | **0.06s** | **~330x** |
+| **MLX (this)** | **v3_e2e_rnnt** | **0.26s** | **~77x** |
 | PyTorch MPS | v3_e2e_rnnt | 0.76s | ~26x |
 | PyTorch CPU | v3_e2e_rnnt | 1.13s | ~18x |
 | ONNX CPU | v3_e2e_ctc | 1.66s | ~12x |
 
-Full 18-minute video: **21.5 seconds** end-to-end (~50x realtime).
+Full 18-minute video: CTC **21.5s** (~50x realtime), RNNT **25.0s** (~42x realtime).
+
+## Model variants
+
+| Variant | Speed | Quality | Use case |
+|---|---|---|---|
+| **CTC** (default) | ~330x realtime | Good | Batch processing, speed-critical |
+| **RNNT** | ~77x realtime | Better | When accuracy matters most |
+
+```python
+# Higher quality with RNNT
+model, tokenizer = load_model("rnnt")
+```
 
 ## Features
 
@@ -79,7 +95,7 @@ Full 18-minute video: **21.5 seconds** end-to-end (~50x realtime).
 ```
 Audio/Video → ffmpeg (16kHz mono) → Mel spectrogram (librosa)
     → Conformer encoder (16 layers, 768d, 16 heads, RoPE)
-    → CTC head → greedy decode → punctuated text
+    → CTC/RNNT head → greedy decode → punctuated text
 ```
 
 The model is a 220M parameter Conformer pretrained on 700,000 hours of Russian speech. The `v3_e2e_ctc` variant produces punctuated, normalized text directly — no language model or post-processing needed.
@@ -88,7 +104,8 @@ The model is a 220M parameter Conformer pretrained on 700,000 hours of Russian s
 
 ```bash
 pip install gigaam-mlx[convert]
-python -m gigaam_mlx.convert --model v3_e2e_ctc --output-dir ./weights
+python -m gigaam_mlx.convert --model v3_e2e_ctc --output-dir ./weights_ctc
+python -m gigaam_mlx.convert --model v3_e2e_rnnt --output-dir ./weights_rnnt
 ```
 
 ## Acknowledgments
