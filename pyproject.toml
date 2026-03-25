@@ -9,7 +9,7 @@ description = "Fast Russian speech recognition on Apple Silicon — MLX port of 
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
-authors = [{ name = "Alex Kel" }]
+authors = [{ name = "Alex Yakovlev" }]
 keywords = ["speech-recognition", "asr", "russian", "mlx", "apple-silicon", "gigaam"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -36,7 +36,8 @@ gigaam-mlx = "gigaam_mlx.transcribe:main"
 
 [project.urls]
 Homepage = "https://github.com/aystream/gigaam-mlx"
-"Model Weights" = "https://huggingface.co/aystream/GigaAM-v3-e2e-ctc-mlx"
+"Model Weights (CTC)" = "https://huggingface.co/aystream/GigaAM-v3-e2e-ctc-mlx"
+"Model Weights (RNNT)" = "https://huggingface.co/aystream/GigaAM-v3-e2e-rnnt-mlx"
 "Original Model" = "https://github.com/salute-developers/GigaAM"
 
 [tool.setuptools.packages.find]
