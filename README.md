@@ -3,7 +3,8 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://python.org)
 [![Apple Silicon](https://img.shields.io/badge/Apple_Silicon-M1%2FM2%2FM3%2FM4-black?logo=apple)](https://github.com/ml-explore/mlx)
-[![HuggingFace](https://img.shields.io/badge/%F0%9F%A4%97-Model-yellow)](https://huggingface.co/aystream/GigaAM-v3-e2e-ctc-mlx)
+[![HuggingFace CTC](https://img.shields.io/badge/%F0%9F%A4%97-CTC_Model-yellow)](https://huggingface.co/aystream/GigaAM-v3-e2e-ctc-mlx)
+[![HuggingFace RNNT](https://img.shields.io/badge/%F0%9F%A4%97-RNNT_Model-yellow)](https://huggingface.co/aystream/GigaAM-v3-e2e-rnnt-mlx)
 [![arXiv](https://img.shields.io/badge/arXiv-2506.01192-b31b1b.svg)](https://arxiv.org/abs/2506.01192)
 
 > Fast Russian speech recognition on Apple Silicon — **180x realtime**
