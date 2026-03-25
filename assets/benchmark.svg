@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 230">
   <style>
     text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
     .title { font-size: 14px; font-weight: 600; fill: #24292f; }
@@ -11,24 +11,28 @@
 
   <!-- MLX CTC -->
   <text x="16" y="56" class="label">MLX CTC (this)</text>
-  <rect x="140" y="42" width="24" height="20" rx="4" fill="#1a7f37"/>
-  <text x="148" y="56" class="value">0.11s</text>
+  <rect x="140" y="42" width="16" height="20" rx="4" fill="#1a7f37"/>
+  <text x="162" y="56" class="value" fill="#1a7f37">0.06s</text>
+
+  <!-- MLX RNNT -->
+  <text x="16" y="86" class="label">MLX RNNT (this)</text>
+  <rect x="140" y="72" width="57" height="20" rx="4" fill="#1a7f37"/>
+  <text x="148" y="86" class="value">0.26s</text>
 
   <!-- PyTorch MPS RNNT -->
-  <text x="16" y="86" class="label">PyTorch MPS</text>
-  <rect x="140" y="72" width="166" height="20" rx="4" fill="#0969da"/>
-  <text x="148" y="86" class="value">0.76s</text>
+  <text x="16" y="116" class="label">PyTorch MPS</text>
+  <rect x="140" y="102" width="166" height="20" rx="4" fill="#0969da"/>
+  <text x="148" y="116" class="value">0.76s</text>
 
   <!-- PyTorch CPU RNNT -->
-  <text x="16" y="116" class="label">PyTorch CPU</text>
-  <rect x="140" y="102" width="247" height="20" rx="4" fill="#6e7781"/>
-  <text x="148" y="116" class="value">1.13s</text>
+  <text x="16" y="146" class="label">PyTorch CPU</text>
+  <rect x="140" y="132" width="247" height="20" rx="4" fill="#6e7781"/>
+  <text x="148" y="146" class="value">1.13s</text>
 
   <!-- ONNX CPU -->
-  <text x="16" y="146" class="label">ONNX CPU</text>
-  <rect x="140" y="132" width="362" height="20" rx="4" fill="#9a6700"/>
-  <text x="148" y="146" class="value">1.66s</text>
+  <text x="16" y="176" class="label">ONNX CPU</text>
+  <rect x="140" y="162" width="362" height="20" rx="4" fill="#9a6700"/>
+  <text x="148" y="176" class="value">1.66s</text>
 
-  <text x="16" y="178" class="note">Lower is better. MLX encoder runs in 0.2s — CTC decode is just argmax (near zero cost).</text>
-  <text x="16" y="192" class="note">Full 18-min video transcription: 21.5s end-to-end (~50x realtime).</text>
+  <text x="16" y="208" class="note">Lower is better. Full 18-min video: CTC 21.5s (~50x realtime), RNNT 25.0s (~42x realtime).</text>
 </svg>
