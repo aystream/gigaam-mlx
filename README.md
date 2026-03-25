@@ -7,7 +7,7 @@
 [![HuggingFace RNNT](https://img.shields.io/badge/%F0%9F%A4%97-RNNT_Model-yellow)](https://huggingface.co/aystream/GigaAM-v3-e2e-rnnt-mlx)
 [![arXiv](https://img.shields.io/badge/arXiv-2506.01192-b31b1b.svg)](https://arxiv.org/abs/2506.01192)
 
-> Fast Russian speech recognition on Apple Silicon — **180x realtime**
+> Fast Russian speech recognition on Apple Silicon — **up to 330x realtime**
 
 MLX port of [GigaAM-v3](https://github.com/salute-developers/GigaAM) (220M params, Conformer + CTC/RNNT) by Salute Developers. Produces **punctuated, normalized text** directly. No PyTorch required.
 
@@ -72,7 +72,7 @@ model, tokenizer = load_model("rnnt")
 
 ## Features
 
-- **180x realtime** on Apple Silicon (M1/M2/M3/M4)
+- **up to 330x realtime** on Apple Silicon (M1/M2/M3/M4)
 - **Russian + English** — recognizes English words/terms in Russian speech
 - **Punctuation** built-in — end-to-end model, no post-processing
 - **No PyTorch** — pure MLX + librosa + numpy
